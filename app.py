@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 """
-github_candidate_dashboard_app_v2.py
+app.py
 
-Flask dashboard for searching public GitHub candidate profiles, filtering by
-technology stack, ranking candidates, and surfacing publicly shared contact paths.
-
-Install:
-    pip install flask requests
-
-Run (PowerShell):
-    $env:GITHUB_TOKEN="your_new_token_here"
-    python github_candidate_dashboard_app_v2.py
+DevReady GitHub candidate dashboard with:
+- GitHub public profile search
+- candidate ranking
+- profile side panel based on selected candidate
+- "Generate Email" button using mailto:
 """
 
 from __future__ import annotations
@@ -72,75 +68,127 @@ HTML = r"""
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GitHub Candidate Dashboard v2</title>
+  <title>DevReady Candidate Dashboard</title>
   <style>
     :root{
-      --bg:#0b1020;--panel:#121933;--panel-2:#182243;--text:#eef2ff;--muted:#aab4d6;
-      --line:#2b396b;--accent:#6ea8fe;--accent-2:#7ef0c2;--warn:#ffcc66;--danger:#ff7b7b;
-      --shadow:0 18px 45px rgba(0,0,0,.28);--radius:20px;
+      --bg:#07130d;
+      --bg-2:#0d1f16;
+      --panel:#10251a;
+      --panel-2:#163624;
+      --text:#effff5;
+      --muted:#9bc2ae;
+      --line:#28533c;
+      --accent:#1ed760;
+      --accent-2:#57f28f;
+      --accent-3:#0fb34f;
+      --warn:#ffcc66;
+      --danger:#ff8e8e;
+      --shadow:0 18px 45px rgba(0,0,0,.28);
+      --radius:20px;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#09101f 0%,#0e1530 100%);color:var(--text)}
-    .wrap{max-width:1650px;margin:0 auto;padding:24px}
+    body{
+      margin:0;
+      font-family:Inter,Segoe UI,Arial,sans-serif;
+      background:linear-gradient(180deg,var(--bg) 0%, #0b1711 100%);
+      color:var(--text)
+    }
+    .wrap{max-width:1680px;margin:0 auto;padding:24px}
     .hero{
       display:flex;justify-content:space-between;gap:24px;align-items:flex-start;
-      background:linear-gradient(135deg,rgba(110,168,254,.22),rgba(126,240,194,.12));
+      background:linear-gradient(135deg,rgba(30,215,96,.20),rgba(87,242,143,.10));
       border:1px solid rgba(255,255,255,.08);border-radius:28px;padding:26px 28px;
       box-shadow:var(--shadow);margin-bottom:22px
     }
     .hero h1{margin:0 0 8px 0;font-size:34px;font-weight:800}
     .hero p{margin:0;color:var(--muted);max-width:980px;line-height:1.5}
+    .brand-row{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+    .brand-badge{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:44px;height:44px;padding:0 14px;border-radius:999px;
+      background:rgba(30,215,96,.16);border:1px solid rgba(30,215,96,.35);
+      color:var(--accent);font-weight:900;letter-spacing:.4px
+    }
     .actions{display:flex;gap:10px;flex-wrap:wrap}
-    .btn{border:none;border-radius:14px;padding:12px 16px;font-weight:700;cursor:pointer;background:var(--accent);color:#09101f}
-    .btn.secondary{background:#24345f;color:var(--text);border:1px solid rgba(255,255,255,.08)}
+    .btn{
+      border:none;border-radius:14px;padding:12px 16px;font-weight:800;cursor:pointer;
+      background:var(--accent);color:#062010;text-decoration:none;display:inline-flex;align-items:center;gap:8px
+    }
+    .btn.secondary{background:#1d3c2b;color:var(--text);border:1px solid rgba(255,255,255,.08)}
     .btn.ghost{background:transparent;color:var(--text);border:1px solid rgba(255,255,255,.12)}
     .btn:disabled{opacity:.55;cursor:not-allowed}
     .grid{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:18px;margin-bottom:18px}
-    .card{background:rgba(18,25,51,.92);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+    .card{
+      background:rgba(16,37,26,.94);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)
+    }
     .metric .label{color:var(--muted);font-size:13px;margin-bottom:8px}
     .metric .value{font-size:34px;font-weight:800}
     .metric .sub{font-size:13px;color:var(--muted);margin-top:8px}
-    .highlight{background:linear-gradient(135deg,rgba(110,168,254,.18),rgba(126,240,194,.08))}
-    .layout{display:grid;grid-template-columns:420px 1fr;gap:18px;align-items:start}
+    .highlight{background:linear-gradient(135deg,rgba(30,215,96,.18),rgba(87,242,143,.08))}
+    .layout{display:grid;grid-template-columns:420px 1fr 410px;gap:18px;align-items:start}
     .section-title{font-size:14px;font-weight:800;letter-spacing:.3px;color:var(--muted);margin-bottom:12px;text-transform:uppercase}
     .filter-group{margin-bottom:16px}
     .filter-group label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
     .input, select, textarea{
       width:100%;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.1);
-      background:#0f1630;color:var(--text);outline:none
+      background:#0b1b13;color:var(--text);outline:none
     }
     textarea{min-height:78px;resize:vertical}
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
     .range-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
-    .chip{padding:8px 10px;border-radius:999px;background:#24345f;color:#dfe8ff;font-size:12px;border:1px solid rgba(255,255,255,.06)}
+    .chip{padding:8px 10px;border-radius:999px;background:#1d3c2b;color:#ddffe9;font-size:12px;border:1px solid rgba(255,255,255,.06)}
     .chips{display:flex;gap:8px;flex-wrap:wrap}
     .status{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.5}
     .hint{font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px}
     .main-top{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-bottom:18px}
     .bar-list{display:grid;gap:12px}
     .bar-row .row-head{display:flex;justify-content:space-between;font-size:13px;color:#dbe4ff;margin-bottom:6px;gap:12px}
-    .bar{height:12px;background:#0e1630;border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.05)}
+    .bar{height:12px;background:#0a1711;border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.05)}
     .bar > span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%}
     .table-wrap{overflow:auto;border-radius:16px;border:1px solid rgba(255,255,255,.08)}
-    table{width:100%;border-collapse:collapse;min-width:1450px;background:#101833}
+    table{width:100%;border-collapse:collapse;min-width:1450px;background:#0f2017}
     th,td{padding:14px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:top}
-    th{position:sticky;top:0;background:#16214a;font-size:12px;color:#c5d0f5;text-transform:uppercase;letter-spacing:.35px}
-    td{font-size:14px;color:#eef2ff}
-    tr:hover td{background:#131f44}
+    th{position:sticky;top:0;background:#143423;font-size:12px;color:#c8f8d9;text-transform:uppercase;letter-spacing:.35px}
+    td{font-size:14px;color:var(--text)}
+    tr:hover td{background:#153226}
+    tr.selected td{background:#183a2a}
     .score{display:inline-flex;min-width:64px;justify-content:center;align-items:center;padding:8px 10px;border-radius:999px;font-weight:800}
-    .score.high{background:rgba(126,240,194,.14);color:var(--accent-2)}
+    .score.high{background:rgba(87,242,143,.14);color:var(--accent-2)}
     .score.mid{background:rgba(255,204,102,.13);color:var(--warn)}
-    .score.low{background:rgba(255,123,123,.12);color:var(--danger)}
+    .score.low{background:rgba(255,142,142,.12);color:var(--danger)}
     .tiny{font-size:12px;color:var(--muted)}
-    .link{color:#9fc1ff;text-decoration:none}
+    .link{color:#8ff7b4;text-decoration:none}
     .link:hover{text-decoration:underline}
     .yes{color:var(--accent-2);font-weight:700}
     .no{color:var(--muted)}
-    .empty{padding:44px 18px;text-align:center;color:var(--muted);border:1px dashed rgba(255,255,255,.12);border-radius:18px;background:#0f1630}
+    .empty{padding:44px 18px;text-align:center;color:var(--muted);border:1px dashed rgba(255,255,255,.12);border-radius:18px;background:#0b1b13}
     .footer-note{margin-top:16px;color:var(--muted);font-size:12px;line-height:1.45}
-    .contact-badge{display:inline-block;padding:6px 8px;border-radius:10px;background:#1a2750;border:1px solid rgba(255,255,255,.06);font-size:12px;margin:2px 4px 2px 0}
+    .contact-badge{display:inline-block;padding:6px 8px;border-radius:10px;background:#153725;border:1px solid rgba(255,255,255,.06);font-size:12px;margin:2px 4px 2px 0}
+    .small-action{
+      display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:10px;
+      background:#163624;color:var(--text);border:1px solid rgba(255,255,255,.08);cursor:pointer;font-size:12px;font-weight:700
+    }
+    .profile-card{position:sticky;top:24px}
+    .profile-top{
+      display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px
+    }
+    .profile-name{font-size:24px;font-weight:900;margin:0 0 4px 0}
+    .profile-handle{font-size:13px;color:var(--muted)}
+    .profile-bio{line-height:1.55;color:#e5fff0;margin:14px 0}
+    .profile-section{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
+    .profile-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+    .profile-value{font-size:14px;line-height:1.5}
+    .profile-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+    .pill-grid{display:flex;flex-wrap:wrap;gap:8px}
+    .site-link{
+      display:inline-flex;align-items:center;gap:8px;margin-top:8px;
+      color:var(--accent-2);text-decoration:none;font-weight:700
+    }
     code{background:#0d1430;padding:2px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.06)}
+    @media (max-width: 1450px){.layout{grid-template-columns:420px 1fr}.profile-card{grid-column:1 / -1;position:static}}
     @media (max-width: 1280px){.grid{grid-template-columns:1fr 1fr}.layout{grid-template-columns:1fr}.main-top{grid-template-columns:1fr}.hero{flex-direction:column}}
     @media (max-width: 760px){.grid{grid-template-columns:1fr}.two-col,.three-col{grid-template-columns:1fr}.wrap{padding:14px}.hero h1{font-size:28px}}
   </style>
@@ -149,11 +197,16 @@ HTML = r"""
   <div class="wrap">
     <div class="hero">
       <div>
-        <h1>GitHub Candidate Dashboard v2</h1>
+        <div class="brand-row">
+          <div class="brand-badge">DR</div>
+          <div class="tiny" style="font-size:13px;color:var(--accent-2);font-weight:800;letter-spacing:.3px">DEVREADY TALENT</div>
+        </div>
+        <h1>DevReady Candidate Dashboard</h1>
         <p>
-          Search GitHub public profiles from the browser, rank candidates by stack fit and activity, and surface only
-          publicly shared contact paths such as websites, LinkedIn links, or public email that the user chose to expose.
+          Search GitHub public profiles, rank candidates by stack fit and activity, review a polished candidate profile,
+          and generate an outreach email directly from the selected profile.
         </p>
+        <a class="site-link" href="https://www.devready.io" target="_blank" rel="noopener">www.devready.io</a>
       </div>
       <div class="actions">
         <button class="btn" id="runSearch">Run Search</button>
@@ -238,8 +291,7 @@ HTML = r"""
           </div>
 
           <div class="status" id="runStatus">
-            First fix your environment error by installing dependencies in the active venv:
-            <code>python -m pip install flask requests</code>
+            DevReady dashboard ready. Search GitHub public profiles and select a candidate to open the profile panel.
           </div>
         </div>
 
@@ -324,6 +376,7 @@ HTML = r"""
                   <th>Keywords</th>
                   <th>Best public contact</th>
                   <th>Contact details</th>
+                  <th>Profile</th>
                   <th>Notes</th>
                 </tr>
               </thead>
@@ -332,15 +385,27 @@ HTML = r"""
           </div>
           <div id="emptyState" class="empty">No candidates loaded yet.</div>
           <div class="footer-note">
-            This dashboard uses only public GitHub profile signals and public contact paths voluntarily exposed by the user.
+            Select any candidate row or click View Profile to open a DevReady profile card and generate a ready-to-send outreach email.
           </div>
         </div>
       </section>
+
+      <aside class="profile-card">
+        <div class="card">
+          <div class="section-title">Selected candidate profile</div>
+          <div id="profilePanel">
+            <div class="empty">Select a candidate to view the profile and generate an outreach email.</div>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 
 <script>
-const state = { raw: [], filtered: [], activeKeyword: null };
+const DEVREADY_EMAIL = "recruiting@devready.io";
+const DEVREADY_SITE = "https://www.devready.io";
+
+const state = { raw: [], filtered: [], activeKeyword: null, selectedLogin: null };
 
 const els = {
   phrase: document.getElementById('phrase'),
@@ -371,7 +436,8 @@ const els = {
   metricSummary: document.getElementById('metricSummary'),
   metricAvg: document.getElementById('metricAvg'),
   metricAvail: document.getElementById('metricAvail'),
-  metricContact: document.getElementById('metricContact')
+  metricContact: document.getElementById('metricContact'),
+  profilePanel: document.getElementById('profilePanel')
 };
 
 function scoreClass(score){
@@ -443,7 +509,7 @@ function renderKeywordChips(){
     const chip = document.createElement('button');
     chip.className = 'chip';
     chip.style.cursor = 'pointer';
-    chip.style.background = state.activeKeyword === keyword ? 'rgba(126,240,194,.18)' : '';
+    chip.style.background = state.activeKeyword === keyword ? 'rgba(87,242,143,.18)' : '';
     chip.style.color = state.activeKeyword === keyword ? 'var(--accent-2)' : '';
     chip.textContent = `${keyword} (${count})`;
     chip.onclick = () => {
@@ -467,12 +533,111 @@ function renderMetrics(){
     ? `${avail} with availability signals, ${contact} with a public contact path.`
     : 'No candidates match the current filters.';
 }
+function buildEmailLink(candidate){
+  const displayName = candidate.name || candidate.login || "there";
+  const greetingName = candidate.name || candidate.login || "there";
+  const target = candidate.public_email || DEVREADY_EMAIL;
+  const subject = `DevReady opportunity for ${displayName}`;
+  const body = `Hi ${greetingName},
+
+I am from DevReady and want to see if you are interested in joining our community and interviewing for a position we have open for you.
+
+Website: www.devready.io
+Email: recruiting@devready.io
+
+Best,
+DevReady Recruiting`;
+  return `mailto:${target}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+function selectCandidate(login){
+  state.selectedLogin = login;
+  renderTable();
+  renderProfile();
+}
+function renderProfile(){
+  const candidate = state.raw.find(r => r.login === state.selectedLogin) || state.filtered[0] || null;
+  if(!candidate){
+    els.profilePanel.innerHTML = '<div class="empty">Select a candidate to view the profile and generate an outreach email.</div>';
+    return;
+  }
+  const keywordPills = splitKeywords(candidate.matching_keywords).map(k => `<span class="chip">${k}</span>`).join(' ') || '<span class="tiny">No matched keywords captured.</span>';
+  const languages = candidate.top_languages || '—';
+  const pinned = candidate.pinned_repo_names || '—';
+  const recent = candidate.recent_repo_names || '—';
+  const emailLink = buildEmailLink(candidate);
+
+  els.profilePanel.innerHTML = `
+    <div class="profile-top">
+      <div>
+        <div class="profile-name">${candidate.name || candidate.login}</div>
+        <div class="profile-handle">@${candidate.login}</div>
+      </div>
+      <div><span class="score ${scoreClass(candidate.score)}">${candidate.score}</span></div>
+    </div>
+
+    <div class="profile-bio">${candidate.bio || 'No public bio available.'}</div>
+
+    <div class="profile-section">
+      <div class="profile-label">Location</div>
+      <div class="profile-value">${candidate.location || '—'}</div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-label">Company</div>
+      <div class="profile-value">${candidate.company || '—'}</div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-label">Top languages</div>
+      <div class="profile-value">${languages}</div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-label">Matched keywords</div>
+      <div class="pill-grid">${keywordPills}</div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-label">Pinned repositories</div>
+      <div class="profile-value">${pinned}</div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-label">Recent repositories</div>
+      <div class="profile-value">${recent}</div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-label">Public contact path</div>
+      <div class="profile-value">${candidate.best_contact_method || 'GitHub profile only'}</div>
+      <div class="tiny" style="margin-top:8px">
+        ${candidate.website_url ? `Website: <a class="link" href="${candidate.website_url}" target="_blank">Open</a><br>` : ''}
+        ${candidate.linkedin_url ? `LinkedIn: <a class="link" href="${candidate.linkedin_url}" target="_blank">Open</a><br>` : ''}
+        ${candidate.public_email ? `Email: ${candidate.public_email}` : ''}
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="profile-label">DevReady outreach</div>
+      <div class="profile-value">
+        DevReady website: <a class="link" href="${DEVREADY_SITE}" target="_blank">www.devready.io</a><br>
+        DevReady recruiting: <a class="link" href="mailto:${DEVREADY_EMAIL}">${DEVREADY_EMAIL}</a>
+      </div>
+      <div class="profile-actions">
+        <a class="btn" href="${emailLink}">Generate Email</a>
+        <a class="btn secondary" href="${candidate.profile_url || '#'}" target="_blank">Open GitHub</a>
+      </div>
+      <div class="tiny" style="margin-top:10px">The email button opens a draft with the DevReady outreach text pre-filled.</div>
+    </div>
+  `;
+}
 function renderTable(){
   const rows = state.filtered;
   els.candidateBody.innerHTML = '';
   els.emptyState.style.display = rows.length ? 'none' : 'block';
   rows.forEach(r => {
     const tr = document.createElement('tr');
+    if (state.selectedLogin === r.login) tr.classList.add('selected');
     const displayName = r.name || r.login;
 
     const contactBadges = [];
@@ -495,9 +660,21 @@ function renderTable(){
       <td>${r.matching_keywords || '<span class="tiny">—</span>'}</td>
       <td>${r.best_contact_method || '<span class="tiny">Profile only</span>'}</td>
       <td>${contactBadges.join(' ')}</td>
+      <td><button class="small-action" data-login="${r.login}">View Profile</button></td>
       <td>${r.notes || '<span class="tiny">—</span>'}</td>
     `;
+    tr.addEventListener('click', (evt) => {
+      if (evt.target.closest('a') || evt.target.closest('button')) return;
+      selectCandidate(r.login);
+    });
     els.candidateBody.appendChild(tr);
+  });
+
+  els.candidateBody.querySelectorAll('button[data-login]').forEach(btn => {
+    btn.addEventListener('click', (evt) => {
+      evt.stopPropagation();
+      selectCandidate(btn.getAttribute('data-login'));
+    });
   });
 }
 function applyFilters(){
@@ -518,15 +695,21 @@ function applyFilters(){
   });
   rows = sortRows(rows, els.sortBy.value);
   state.filtered = rows;
+  if (!state.selectedLogin && rows.length) state.selectedLogin = rows[0].login;
+  if (state.selectedLogin && !rows.some(r => r.login === state.selectedLogin)) {
+    state.selectedLogin = rows.length ? rows[0].login : null;
+  }
   renderMetrics();
   renderKeywordChips();
   renderBars(els.keywordBars, getKeywordCounts(state.filtered));
   renderBars(els.locationBars, getLocationCounts(state.filtered));
   renderTable();
+  renderProfile();
 }
 function setData(rows){
   state.raw = rows || [];
   state.filtered = [...state.raw];
+  state.selectedLogin = state.raw.length ? state.raw[0].login : null;
   applyFilters();
 }
 async function runSearch(useDefaults=false){
@@ -616,7 +799,7 @@ def get_headers(token: str, accept: str = "application/vnd.github+json") -> Dict
     return {
         "Authorization": f"Bearer {token}",
         "Accept": accept,
-        "User-Agent": "github-candidate-dashboard-v2",
+        "User-Agent": "devready-github-dashboard",
     }
 
 
@@ -1063,7 +1246,7 @@ def api_export_last_search():
     return Response(
         csv_bytes,
         mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=github_candidates_v2.csv"},
+        headers={"Content-Disposition": "attachment; filename=devready_candidates.csv"},
     )
 
 
@@ -1078,7 +1261,7 @@ if __name__ == "__main__":
         print("PowerShell example:")
         print('$env:GITHUB_TOKEN="your_new_token_here"')
         print("Then run:")
-        print("python github_candidate_dashboard_app_v2.py")
+        print("python app.py")
         raise SystemExit(1)
 
     print("If you see 'No module named flask', run:")
