@@ -1,0 +1,1 @@
+web: gunicorn -b 0.0.0.0:$PORT github_candidate_dashboard_app_v2:app
